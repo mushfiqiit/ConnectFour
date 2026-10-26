@@ -8,7 +8,7 @@ public class MiniMaxAI extends AI {
     @Override
     int play(int[][] boardState) {
         nodeCount = 0;
-        int[][] searchState = Game.getInstance().clone(boardState);
+        int[][] searchState = Game.copyBoard(boardState);
         Node root = new Node(searchState, NodeType.MAX, SEARCH_DEPTH);
         Node bestChild = findBestChild(root);
         int column = bestChild.getMoveColumn();

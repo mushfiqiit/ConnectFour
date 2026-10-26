@@ -108,7 +108,7 @@ public class Node {
                 continue;
             }
 
-            int[][] childState = Game.getInstance().clone(state);
+            int[][] childState = Game.copyBoard(state);
             childState[column][emptyRow] = player;
             // Constructing a child evaluates its subtree and updates search bounds.
             Node child = new Node(childState, childType, this, remainingDepth - 1, column);

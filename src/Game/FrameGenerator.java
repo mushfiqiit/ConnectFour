@@ -75,11 +75,7 @@ public class FrameGenerator {
             return;
         }
 
-        try {
-            Game.startGame(ai);
-        } catch (Exception e) {
-            throw new IllegalStateException("Could not start game", e);
-        }
+        Game.startGame(ai);
     }
 
     private static JPanel createBoardPanel() {

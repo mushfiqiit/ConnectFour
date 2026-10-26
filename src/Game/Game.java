@@ -1,154 +1,111 @@
 package Game;
 
-import javax.swing.*;
-import java.awt.*;
-import java.util.Arrays;
+import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
+import java.util.concurrent.ExecutionException;
 
 public class Game {
-
-    private AI ai;
-
     private static final int COLUMN_COUNT = 7;
     private static final int ROW_COUNT = 6;
+    private static final int EMPTY = 0;
+    private static final int RED_PLAYER = 1;
+    private static final int YELLOW_PLAYER = -1;
+    private static final int GAME_OVER = 0;
 
+    private static Game instance;
+
+    private final AI ai;
     // The board is indexed by column, then by row from the bottom.
     private final int[][] board = new int[COLUMN_COUNT][ROW_COUNT];
-    private int currentPlayer = -1;
+    private int currentPlayer = YELLOW_PLAYER;
     private boolean acceptingHumanInput = true;
 
-    public static Game instance;
-    public static void startGame(AI ai) throws Exception {
+    public static void startGame(AI ai) {
         if (instance == null) {
             instance = new Game(ai);
         }
     }
-    public static void startGame(){
-        if (instance==null){
-            instance = new Game();
-        }
+
+    public static void startGame() {
+        startGame(null);
     }
-    public static Game getInstance(){
-        if(instance==null){
-            instance = new Game();
-        }
+
+    public static Game getInstance() {
+        startGame();
         return instance;
     }
 
-    private Game(AI ai) throws Exception {
-        this.ai =ai;
+    private Game(AI ai) {
+        this.ai = ai;
     }
 
-    private Game(){
-
-    }
-
-    public void drawBoard() {
-        for (int i=0; i<COLUMN_COUNT; i++){
-            FrameGenerator.columns()[i].drawColumn(board[i]);
-        }
-        if (checkWinner() != 0) {
-            currentPlayer = 0;
-
-//            System.out.println(ai.toString());
-
-//            if(ai != null){
-//                if (checkWinner() == 1) {
-//                    JOptionPane.showMessageDialog(null, "AI Won");
-//                } else {
-//                    JOptionPane.showMessageDialog(null, "Human Won");
-//                }
-//            }
-//            else {
-                if (checkWinner() == 1) {
-                    JOptionPane.showMessageDialog(null, "Red Won");
-                } else {
-                    JOptionPane.showMessageDialog(null, "Yellow Won");
-                }
-//            }
-
-
-
-
-
-//            System.out.println((
-//                checkWinner() ==-1 ?
-//                    "Human Won":
-//                    (
-//                        checkWinner() ==1?
-//                            "AI Won":
-//                            "Match Drawn"
-//                    )
-//            ));
-            currentPlayer = 0;
+    private void drawBoard() {
+        for (int column = 0; column < board.length; column++) {
+            FrameGenerator.columns()[column].drawColumn(board[column]);
         }
     }
 
-    int checkWinner() {
+    private int checkWinner() {
         return BoardRules.checkWinner(board);
     }
 
-    public void updateBoard(int columnIndex){
-        if (!playable() || !isLegalColumn(columnIndex)) {
+    private void updateBoard(int columnIndex) {
+        if (!isGameActive() || !isLegalColumn(columnIndex)) {
             return;
         }
-        for (int i = 0; i < ROW_COUNT; i++) {
-            if (board[columnIndex][i] == 0) {
-                board[columnIndex][i] = currentPlayer;
-                FrameGenerator.columns()[columnIndex].incrementSize();
-                currentPlayer *= -1;
-                drawBoard();
-                if (playable() && !hasLegalMove()) {
-                    currentPlayer = 0;
-                    JOptionPane.showMessageDialog(FrameGenerator.getFrame(), "Match Drawn");
-                }
 
+        int row = findFirstEmptyRow(columnIndex);
+        board[columnIndex][row] = currentPlayer;
+        FrameGenerator.columns()[columnIndex].incrementSize();
+        currentPlayer *= -1;
+        drawBoard();
+        checkGameResult();
+    }
 
-//                FrameGenerator.columns()[columnIndex].incrementSize();
-                break;
+    private int findFirstEmptyRow(int columnIndex) {
+        for (int row = 0; row < board[columnIndex].length; row++) {
+            if (board[columnIndex][row] == EMPTY) {
+                return row;
             }
         }
-
-//        print(board);
-//        if(FrameGenerator.hasAI())
-//            flipClick();
+        throw new IllegalStateException("Column is full: " + columnIndex);
     }
 
-    private void print(int[][] arr){
-        for (int[] a:arr) {
-            System.out.println(Arrays.toString(a));
+    private void checkGameResult() {
+        int winner = checkWinner();
+        if (winner != EMPTY) {
+            finishGame(winner == RED_PLAYER ? "Red Won" : "Yellow Won");
+        } else if (!hasLegalMove()) {
+            finishGame("Match Drawn");
         }
-        System.out.println("------------------------------------------------");
     }
 
-    public boolean playable(){
-        return currentPlayer!=0;
+    private void finishGame(String message) {
+        currentPlayer = GAME_OVER;
+        JOptionPane.showMessageDialog(FrameGenerator.getFrame(), message);
     }
 
-    public boolean clickable(){
-        return acceptingHumanInput;
+    private boolean isGameActive() {
+        return currentPlayer != GAME_OVER;
     }
 
-    public void flipClick(){
-        acceptingHumanInput = !acceptingHumanInput;
-    }
-
-    public int[][] clone(int[][] input){
-        int[][] clone= new int[input.length][input[0].length];
-        for (int i=0;i<input.length;i++){
-            clone[i] = input[i].clone();
+    static int[][] copyBoard(int[][] source) {
+        int[][] copy = new int[source.length][];
+        for (int column = 0; column < source.length; column++) {
+            copy[column] = source[column].clone();
         }
-        return clone;
+        return copy;
     }
 
     public void playHumanMove(int columnIndex) {
-        if (!playable() || !acceptingHumanInput || !isLegalColumn(columnIndex)) {
+        if (!isGameActive() || !acceptingHumanInput || !isLegalColumn(columnIndex)) {
             return;
         }
 
         // Lock before drawing: a winner dialog runs a nested Swing event loop.
         acceptingHumanInput = false;
         updateBoard(columnIndex);
-        if (ai != null && playable()) {
+        if (ai != null && isGameActive()) {
             requestAiMove();
         } else {
             acceptingHumanInput = true;
@@ -156,7 +113,7 @@ public class Game {
     }
 
     private void requestAiMove() {
-        int[][] snapshot = clone(board);
+        int[][] snapshot = copyBoard(board);
         new SwingWorker<Integer, Void>() {
             @Override
             protected Integer doInBackground() throws Exception {
@@ -166,19 +123,14 @@ public class Game {
             @Override
             protected void done() {
                 try {
-                    int column = get();
-                    if (!isLegalColumn(column)) {
-                        throw new IllegalStateException("AI selected an illegal column: " + column);
-                    }
-                    updateBoard(column);
+                    applyAiMove(get());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    currentPlayer = 0;
-                } catch (java.util.concurrent.ExecutionException | RuntimeException e) {
-                    currentPlayer = 0;
-                    e.printStackTrace();
-                    JOptionPane.showMessageDialog(FrameGenerator.getFrame(),
-                            "The AI could not choose a move. Please restart the game.");
+                    currentPlayer = GAME_OVER;
+                } catch (ExecutionException e) {
+                    handleAiFailure(e.getCause());
+                } catch (RuntimeException e) {
+                    handleAiFailure(e);
                 } finally {
                     acceptingHumanInput = true;
                 }
@@ -186,12 +138,28 @@ public class Game {
         }.execute();
     }
 
+    private void applyAiMove(int columnIndex) {
+        if (!isLegalColumn(columnIndex)) {
+            throw new IllegalStateException("AI selected an illegal column: " + columnIndex);
+        }
+        updateBoard(columnIndex);
+    }
+
+    private void handleAiFailure(Throwable failure) {
+        currentPlayer = GAME_OVER;
+        failure.printStackTrace();
+        JOptionPane.showMessageDialog(FrameGenerator.getFrame(),
+                "The AI could not choose a move. Please restart the game.");
+    }
+
     private boolean isLegalColumn(int columnIndex) {
-        return columnIndex >= 0 && columnIndex < board.length && !isColumnFull(columnIndex);
+        return columnIndex >= 0
+                && columnIndex < board.length
+                && !isColumnFull(columnIndex);
     }
 
     private boolean isColumnFull(int columnIndex) {
-        return board[columnIndex][board[columnIndex].length - 1] != 0;
+        return board[columnIndex][board[columnIndex].length - 1] != EMPTY;
     }
 
     private boolean hasLegalMove() {
