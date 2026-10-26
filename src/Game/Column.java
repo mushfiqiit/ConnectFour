@@ -37,13 +37,7 @@ public class Column {
     }
 
     private void clicked(){
-        if(size<6 && Game.getInstance().playable()){
-            if (!FrameGenerator.hasAI() || Game.getInstance().clickable()) {
-                Game.getInstance().updateBoard(id);
-                if(FrameGenerator.hasAI())
-                    Game.getInstance().flipClick();
-            }
-        }
+        Game.getInstance().playHumanMove(id);
     }
 
     public void drawColumn(int[] status) {

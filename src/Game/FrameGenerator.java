@@ -9,7 +9,11 @@ public class FrameGenerator {
     private static final Column[] columns = new Column[7];
     private static JFrame frame;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(FrameGenerator::start);
+    }
+
+    private static void start() {
         for (int i =0; i<columns.length;i++){
             columns[i] = new Column(i);
         }
@@ -48,13 +52,17 @@ public class FrameGenerator {
         }
         else hasAI = false;
 
-        drawFrame();
-
         if(hasAI) {
-            Game.startGame(ai);
+            try {
+                Game.startGame(ai);
+            } catch (Exception e) {
+                throw new IllegalStateException("Could not start game", e);
+            }
         }
         else
             Game.startGame();
+
+        drawFrame();
     }
 
 
@@ -75,7 +83,7 @@ public class FrameGenerator {
 
         Panel boardPanel = new Panel();
         boardPanel.setLayout(null);
-        boardPanel.setSize(700,600);
+        boardPanel.setPreferredSize(new Dimension(700,600));
         for (Panel p : panels) {
             boardPanel.add(p);
         }
