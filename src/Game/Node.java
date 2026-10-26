@@ -4,6 +4,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Node {
+    private static final int[][] CELL_WEIGHTS = {
+            {3, 4, 5, 5, 4, 3},
+            {4, 6, 8, 8, 6, 4},
+            {5, 8, 11, 11, 8, 5},
+            {7, 10, 13, 13, 10, 7},
+            {5, 8, 11, 11, 8, 5},
+            {4, 6, 8, 8, 6, 4},
+            {3, 4, 5, 5, 4, 3}
+    };
+
     private static final int CONNECT_LENGTH = 4;
     private static final int THREE_PIECE_SCORE = 10000;
     private static final int TWO_PIECE_SCORE = 100;
@@ -200,27 +210,20 @@ public class Node {
         return player * matchingPieces;
     }
 
-    public int evaluationFunction2() {
-        final int[][] evaluationTable = {
-                {3, 4,  5,  5,  4,  3},
-                {4, 6,  8,  8,  6,  4},
-                {5, 8,  11, 11, 8,  5},
-                {7, 10, 13, 13, 10, 7},
-                {5, 8,  11, 11, 8,  5},
-                {4, 6,  8,  8,  6,  4},
-                {3, 4,  5,  5,  4,  3}
-        };
+    private int evaluatePositionByCellWeights() {
+        int totalScore = 0;
 
-        int center = 138;
-        int sum = 0;
-        for (int i = 0; i < state.length; i++)
-            for (int j = 0; j <state[0].length; j++)
-                if (state[i][j] == 1)
-                    sum += evaluationTable[i][j];
-                else if (state[i][j] == -1)
-                    sum -= evaluationTable[i][j];
-        return sum;
+        for (int column = 0; column < state.length; column++) {
+            for (int row = 0; row < state[column].length; row++) {
+                int player = state[column][row];
+                int weight = CELL_WEIGHTS[column][row];
+                totalScore += player * weight;
+            }
+        }
+
+        return totalScore;
     }
+
 //
 //    private int evaluationFunction3() {
 //        int i,j;
