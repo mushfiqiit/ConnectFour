@@ -1,41 +1,34 @@
 package Game;
 
-public class MiniMaxAI extends AI{
-    public static int nodeCount =0;
+public class MiniMaxAI extends AI {
+    private static final int SEARCH_DEPTH = 10;
+
+    public static int nodeCount = 0;
 
     @Override
-    int play(int[][] boardState) throws Exception {
+    int play(int[][] boardState) {
         nodeCount = 0;
-        Node root = new Node(Game.getInstance().clone(boardState),NodeType.MAX, 10);
+        int[][] searchState = Game.getInstance().clone(boardState);
+        Node root = new Node(searchState, NodeType.MAX, SEARCH_DEPTH);
+        Node bestChild = findBestChild(root);
+        int column = bestChild.getMoveColumn();
 
-        Node bestChild = null;
-        for (Node c: root.children){
-            if(root.eval== c.eval){
-                bestChild=c;
-                break;
-            }
+        if (column < 0 || column >= boardState.length
+                || boardState[column][boardState[column].length - 1] != 0) {
+            throw new IllegalStateException("AI selected an illegal column: " + column);
         }
-        int way;
-        if(bestChild==null)
-            throw new Exception("child pay na");
-        else way = bestChild.getMoveColumn();
 
-
-        System.out.println(nodeCount+" node created\n");
-
-        if(way<7 && way>=0){
-//            System.out.println(way);
-//            FileWriter wr = new FileWriter(new File("output.txt"));
-//            wr.write(root.toString());
-//            wr.close();
-//            System.out.println(root);
-
-
-//            Thread.sleep(1000);
-            return way;
-        }
-        else throw new Exception("AI baire dite chay");
+        System.out.println(nodeCount + " nodes created");
+        return column;
     }
 
-
+    private Node findBestChild(Node root) {
+        for (Node child : root.children) {
+            // Preserve the first matching move when several children share the best score.
+            if (child.eval == root.eval) {
+                return child;
+            }
+        }
+        throw new IllegalStateException("No move matches the root's evaluation; the position may be terminal.");
+    }
 }
