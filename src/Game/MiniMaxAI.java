@@ -6,7 +6,7 @@ public class MiniMaxAI extends AI{
     @Override
     int play(int[][] boardState) throws Exception {
         nodeCount = 0;
-        Node root = new Node(Game.getInstance().clone(boardState),NodeType.MAX, null,10);
+        Node root = new Node(Game.getInstance().clone(boardState),NodeType.MAX, 10);
 
         Node bestChild = null;
         for (Node c: root.children){
@@ -18,7 +18,7 @@ public class MiniMaxAI extends AI{
         int way;
         if(bestChild==null)
             throw new Exception("child pay na");
-        else way = root.getDifference(bestChild);
+        else way = bestChild.getMoveColumn();
 
 
         System.out.println(nodeCount+" node created\n");

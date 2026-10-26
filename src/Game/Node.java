@@ -20,6 +20,8 @@ public class Node {
     private static final int FALLING_DIAGONAL_THREE_PIECE_SCORE = 100;
     private static final int FALLING_DIAGONAL_TWO_PIECE_SCORE = 10;
 
+    private final int moveColumn;
+
     Node parent;
     ArrayList<Node> children = new ArrayList<>();
     int[][] state;
@@ -30,9 +32,14 @@ public class Node {
     int tempParentAlphaBeta;
     int remainingDepth;
 
-    public Node(
+    public Node(int[][] inputState, NodeType nodeType, int remainingDepth) {
+        this(inputState, nodeType, null, remainingDepth, -1);
+    }
+
+    private Node(
             int[][] inputState, NodeType nodeType,
-            Node parent, int remainingDepth) {
+            Node parent, int remainingDepth, int moveColumn) {
+        this.moveColumn = moveColumn;
         this.state = inputState;
         this.type = nodeType;
         this.parent = parent;
@@ -50,9 +57,9 @@ public class Node {
             propagateTerminalEvaluation();
         } else {
             expandChildren();
-            eval = evaluateBasedOnChild();
+            eval = evaluateChildren();
             tempParentAlphaBeta = eval;
-            setParent();
+            updateParentBound();
         }
     }
 
@@ -86,8 +93,8 @@ public class Node {
 
     private void propagateTerminalEvaluation() {
         alphaBeta = eval;
-        if (pushUpwards()) {
-            setParent();
+        if (updateBoundAndCheckContinuation()) {
+            updateParentBound();
         }
     }
 
@@ -104,10 +111,10 @@ public class Node {
             int[][] childState = Game.getInstance().clone(state);
             childState[column][emptyRow] = player;
             // Constructing a child evaluates its subtree and updates search bounds.
-            Node child = new Node(childState, childType, this, remainingDepth - 1);
+            Node child = new Node(childState, childType, this, remainingDepth - 1, column);
             children.add(child);
 
-            if (parent != null && parent.parent != null && !pushUpwards()) {
+            if (parent != null && parent.parent != null && !updateBoundAndCheckContinuation()) {
                 break;
             }
         }
@@ -126,30 +133,16 @@ public class Node {
         return BoardRules.checkWinner(state);
     }
 
-    private int evaluateBasedOnChild(){
-        if(type == NodeType.MAX)
-            return max();
-        else return min();
-    }
-
-    private int max(){
-        int childEval= Integer.MIN_VALUE;
-        for(Node n: children){
-            childEval = Math.max(n.eval, childEval);
+    private int evaluateChildren() {
+        boolean maximizing = type == NodeType.MAX;
+        int bestScore = maximizing ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        for (Node child : children) {
+            bestScore = maximizing
+                    ? Math.max(bestScore, child.eval)
+                    : Math.min(bestScore, child.eval);
         }
-        return childEval;
+        return bestScore;
     }
-
-    private int min(){
-        int childEval= Integer.MAX_VALUE;
-        for(Node n: children){
-            childEval = Math.min(n.eval,childEval);
-        }
-        return childEval;
-    }
-
-
-
 
     private int evaluatePosition() {
         int totalScore = 0;
@@ -224,95 +217,58 @@ public class Node {
         return totalScore;
     }
 
-//
-//    private int evaluationFunction3() {
-//        int i,j;
-//        for (i=0; i<7; i++){
-//            for(j=0; j<6; j++){
-//                if(state[i][j]==0) break;
-//            }
-//
-//
-//        }
-//        return 0;
-//    }
-
-
-
-
-    public int getDifference(Node child) throws Exception {
-        for(int i=0; i<7; i++){
-            for (int j=0; j<6; j++){
-                if (child.state[i][j] != state[i][j]) {
-                    if(child.state[i][j]==1 && state[i][j]==0)
-                        return i;
-                    else if(child.state[i][j]==-1 && state[i][j]==0)
-                        throw new Exception("ai -1 daan dise kemne jani");
-                    else if(state[i][j]!=0)
-                        throw new Exception("ai ager daan nai koira dese kemne?");
-                    else throw new Exception("ki hoiche jani na. but check koira dekh");
-                }
-            }
-        }
-        throw new Exception("akam chodaiso");
+    /** Returns the column that produced this node, or -1 for the root. */
+    public int getMoveColumn() {
+        return moveColumn;
     }
 
-    private void print(int[][] arr){
-        for (int[] a:arr) {
-            System.out.println(Arrays.toString(a));
-        }
-        System.out.println("------------------------------------------------");
+    @Override
+    public String toString() {
+        StringBuilder output = new StringBuilder();
+        appendTree(output, 0);
+        return output.toString();
     }
 
-    public String toString(){
-        String ret="";
-        String tabs = "";
-        for (int i=7-remainingDepth;i>=0;i--) tabs+="\t";
-        ret+=tabs+"{\n";
-        for (int[] a:state) {
-            ret+=tabs+"    "+Arrays.toString(a)+"\n";
+    private void appendTree(StringBuilder output, int indentationLevel) {
+        StringBuilder indentation = new StringBuilder();
+        for (int level = 0; level < indentationLevel; level++) {
+            indentation.append('\t');
         }
-        ret+=tabs+"    e:" +eval+"\n";
-        for (Node c:children)
-            ret+=c;
 
-        ret+=tabs+"}"+"\n";
-//        System.out.println(ret);
-        return ret;
+        output.append(indentation).append("{\n");
+        for (int[] column : state) {
+            output.append(indentation).append("    ")
+                    .append(Arrays.toString(column)).append('\n');
+        }
+        output.append(indentation).append("    e:").append(eval).append('\n');
+        for (Node child : children) {
+            child.appendTree(output, indentationLevel + 1);
+        }
+        output.append(indentation).append("}\n");
     }
 
-
-
-    /***************************ab******************************/
-    private boolean pushUpwards(){
-        if(type == NodeType.MAX){
-            if(alphaBeta<= tempParentAlphaBeta){
-                tempParentAlphaBeta = alphaBeta;
-                return true;
-            }
-            else return false;
+    /**
+     * Updates the inherited bound when this node's bound permits continuation.
+     * Returns false when the caller should stop expanding children.
+     */
+    private boolean updateBoundAndCheckContinuation() {
+        boolean canContinue = type == NodeType.MAX
+                ? alphaBeta <= tempParentAlphaBeta
+                : alphaBeta >= tempParentAlphaBeta;
+        if (canContinue) {
+            tempParentAlphaBeta = alphaBeta;
         }
-        else {
-            if(alphaBeta>=tempParentAlphaBeta){
-                tempParentAlphaBeta = alphaBeta;
-                return true;
-            }
-            else return false;
-        }
+        return canContinue;
     }
 
-    private void setParent(){
-        if(parent != null){
-            if(type == NodeType.MAX){
-                if(tempParentAlphaBeta<=parent.alphaBeta){
-                    parent.alphaBeta = tempParentAlphaBeta;
-                }
-            } else {
-                if(tempParentAlphaBeta >= parent.alphaBeta){
-                    parent.alphaBeta = tempParentAlphaBeta;
-                }
-            }
+    private void updateParentBound() {
+        if (parent == null) {
+            return;
+        }
+        if (type == NodeType.MAX) {
+            parent.alphaBeta = Math.min(parent.alphaBeta, tempParentAlphaBeta);
+        } else {
+            parent.alphaBeta = Math.max(parent.alphaBeta, tempParentAlphaBeta);
         }
     }
-    /*************************************************************/
 }
