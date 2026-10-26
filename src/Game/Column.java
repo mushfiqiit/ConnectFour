@@ -1,58 +1,68 @@
 package Game;
 
-import javax.swing.*;
+import javax.swing.ImageIcon;
+import javax.swing.JLabel;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class Column {
-    private static final ImageIcon red = new ImageIcon("red.png");
-    private static final ImageIcon yellow = new ImageIcon("yellow.png");
-    private static final ImageIcon empty = new ImageIcon("empty.png");
+    private static final int ROW_COUNT = 6;
+    private static final int CELL_SIZE = 100;
 
-    final int id;
+    private static final ImageIcon RED_ICON = new ImageIcon("red.png");
+    private static final ImageIcon YELLOW_ICON = new ImageIcon("yellow.png");
+    private static final ImageIcon EMPTY_ICON = new ImageIcon("empty.png");
+
+    private final int columnIndex;
+    private final JLabel[] labels = new JLabel[ROW_COUNT];
     private int size = 0;
-    private final JLabel[] labels = new JLabel[6];
 
-    public Column(int id) {
-        this.id = id;
-        for (int j=0;j<6;j++){
-            JLabel l = new JLabel(empty);
-            l.setBounds(0,500-j*100,100,100);
-            l.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    clicked();
-                }
-            });
-            labels[j] = l;
+    public Column(int columnIndex) {
+        this.columnIndex = columnIndex;
+
+        MouseAdapter clickListener = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                requestHumanMove();
+            }
+        };
+
+        for (int row = 0; row < ROW_COUNT; row++) {
+            JLabel label = new JLabel(EMPTY_ICON);
+            // Board rows start at the bottom; screen coordinates start at the top.
+            int screenY = (ROW_COUNT - 1 - row) * CELL_SIZE;
+            label.setBounds(0, screenY, CELL_SIZE, CELL_SIZE);
+            label.addMouseListener(clickListener);
+            labels[row] = label;
         }
     }
 
-    public JLabel[] getLabels(){
+    public JLabel[] getLabels() {
         return labels;
     }
 
-    public void aiClick(){
-        Game.getInstance().updateBoard(id);
+    private void requestHumanMove() {
+        Game.getInstance().playHumanMove(columnIndex);
     }
 
-    private void clicked(){
-        Game.getInstance().playHumanMove(id);
-    }
-
-    public void drawColumn(int[] status) {
-        for (int i=0; i<status.length; i++){
-            if(status[i]==0) labels[i].setIcon(empty);
-            else if(status[i]==1) labels[i].setIcon(red);
-            else if(status[i]==-1) labels[i].setIcon(yellow);
+    public void drawColumn(int[] columnState) {
+        for (int row = 0; row < columnState.length; row++) {
+            int player = columnState[row];
+            if (player == 0) {
+                labels[row].setIcon(EMPTY_ICON);
+            } else if (player == 1) {
+                labels[row].setIcon(RED_ICON);
+            } else if (player == -1) {
+                labels[row].setIcon(YELLOW_ICON);
+            }
         }
     }
 
-    public int size(){
+    public int size() {
         return size;
     }
 
-    public void incrementSize(){
+    public void incrementSize() {
         size++;
     }
 }
