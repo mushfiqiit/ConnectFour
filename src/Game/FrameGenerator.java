@@ -1,12 +1,22 @@
 package Game;
 
-
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import java.awt.Dimension;
+import java.awt.GridLayout;
 
 public class FrameGenerator {
+    private static final int COLUMN_COUNT = 7;
+    private static final int ROW_COUNT = 6;
+    private static final int CELL_SIZE = 100;
+    private static final int BOARD_WIDTH = COLUMN_COUNT * CELL_SIZE;
+    private static final int BOARD_HEIGHT = ROW_COUNT * CELL_SIZE;
+
+    private static final Column[] columns = new Column[COLUMN_COUNT];
     private static AI ai;
-    private static final Column[] columns = new Column[7];
     private static JFrame frame;
 
     public static void main(String[] args) {
@@ -14,147 +24,100 @@ public class FrameGenerator {
     }
 
     private static void start() {
-        for (int i =0; i<columns.length;i++){
-            columns[i] = new Column(i);
+        initializeColumns();
+        ai = selectOpponent();
+        startGame();
+        showFrame();
+    }
+
+    private static void initializeColumns() {
+        for (int column = 0; column < columns.length; column++) {
+            columns[column] = new Column(column);
         }
+    }
 
-        boolean hasAI;
-
-        int n = JOptionPane.showOptionDialog(
-                new Frame(),
+    private static AI selectOpponent() {
+        int selectedMode = JOptionPane.showOptionDialog(
+                null,
                 "Game Mode",
-                "A Silly Question",
-                JOptionPane.YES_NO_CANCEL_OPTION,
+                "Connect Four",
+                JOptionPane.DEFAULT_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
                 null,
                 new Object[]{"Single Player", "Multi Player"},
-                1
-        );
+                "Multi Player");
 
-        if(n==0) {
-            hasAI = true;
-
-            int m = JOptionPane.showOptionDialog(
-                    new Frame(),
-                    "Difficulty",
-                    "A Silly Question",
-                    JOptionPane.YES_NO_CANCEL_OPTION,
-                    JOptionPane.QUESTION_MESSAGE,
-                    null,
-                    new Object[]{"Hard", "Easy"},
-                    1
-            );
-
-            if(m==1)
-                ai = new RandomAI();
-            else
-                ai = new MiniMaxAI();
+        // Preserve multiplayer as the fallback when the mode dialog is closed.
+        if (selectedMode != 0) {
+            return null;
         }
-        else hasAI = false;
-
-        if(hasAI) {
-            try {
-                Game.startGame(ai);
-            } catch (Exception e) {
-                throw new IllegalStateException("Could not start game", e);
-            }
-        }
-        else
-            Game.startGame();
-
-        drawFrame();
+        return selectDifficulty();
     }
 
+    private static AI selectDifficulty() {
+        int selectedDifficulty = JOptionPane.showOptionDialog(
+                null,
+                "Difficulty",
+                "Connect Four",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                new Object[]{"Hard", "Easy"},
+                "Easy");
 
-    private static void drawFrame(){
-        Panel[] panels = new Panel[7];
-        for (int i=0;i<7;i++){
-            panels[i] = new Panel();
-            panels[i].setBounds(100*i,0,100,600);
-            panels[i].setLayout(null);
+        // Preserve hard difficulty as the fallback when this dialog is closed.
+        return selectedDifficulty == 1 ? new RandomAI() : new MiniMaxAI();
+    }
+
+    private static void startGame() {
+        if (ai == null) {
+            Game.startGame();
+            return;
         }
 
-        for (int i=0; i<7;i++){
-            JLabel[] x = columns[i].getLabels();
-            for(int j=0; j<6; j++){
-                panels[i].add(x[j]);
-            }
+        try {
+            Game.startGame(ai);
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not start game", e);
         }
+    }
 
-        Panel boardPanel = new Panel();
-        boardPanel.setLayout(null);
-        boardPanel.setPreferredSize(new Dimension(700,600));
-        for (Panel p : panels) {
-            boardPanel.add(p);
+    private static JPanel createBoardPanel() {
+        JPanel boardPanel = new JPanel(new GridLayout(1, COLUMN_COUNT));
+        boardPanel.setPreferredSize(new Dimension(BOARD_WIDTH, BOARD_HEIGHT));
+        for (Column column : columns) {
+            boardPanel.add(createColumnPanel(column));
         }
-        boardPanel.setBounds(0,0,700,600);
+        return boardPanel;
+    }
 
+    private static JPanel createColumnPanel(Column column) {
+        // Column creates its labels with positions measured from the board's bottom.
+        JPanel columnPanel = new JPanel(null);
+        for (JLabel label : column.getLabels()) {
+            columnPanel.add(label);
+        }
+        return columnPanel;
+    }
+
+    private static void showFrame() {
         frame = new JFrame("Connect Four");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-//        Panel titlePanel = new Panel();
-//        titlePanel.setLayout(null);
-//        JLabel f = new JLabel("Connect Four");
-//        f.setBounds(0,0,700,100);
-//        titlePanel.add(f);
-//        titlePanel.setBounds(0,0,700,100);
-//
-//        frame.add(titlePanel);
-
-//        JPanel winningPanel = new JPanel();
-//        winningPanel.setLayout(null);
-//        winningPanel.setSize(700,600);
-//        winningPanel.setBounds(0,0,700,600);
-//        String winingMsg = Game.getInstance().checkWinner()==1?
-//                "AI Won" :
-//                Game.getInstance().checkWinner()==-1?
-//                        "Human Won":
-//                        "Match Drawn";
-//        JLabel winLabel = new JLabel(winingMsg);
-//        winLabel.setLocation(100,100);
-//        winLabel.setBounds(250,200,200,100);
-//        winLabel.setFont(new Font("Arial",4,30));
-//        winningPanel.add(winLabel);
-//        winningPanel.setVisible(false);
-//
-//        frame.add(winningPanel);
-        frame.add(boardPanel);
-        frame.setLocation(300,50);
+        frame.add(createBoardPanel());
         frame.pack();
+        frame.setLocation(300, 50);
         frame.setVisible(true);
     }
 
-    public static Column[] columns(){
+    public static Column[] columns() {
         return columns;
     }
 
-    public static boolean hasAI(){
-        return ai!=null;
+    public static boolean hasAI() {
+        return ai != null;
     }
 
-    public static void winningMessageShower(){
-        JPanel winningPanel = new JPanel();
-        winningPanel.setLayout(null);
-        winningPanel.setSize(700,600);
-        winningPanel.setBounds(0,0,700,600);
-        String winingMsg = Game.getInstance().checkWinner()==1?
-                "AI Won" :
-                Game.getInstance().checkWinner()==-1?
-                        "Human Won":
-                        "Match Drawn";
-        JLabel winLabel = new JLabel(winingMsg);
-        winLabel.setLocation(100,100);
-        winLabel.setBounds(250,200,200,100);
-        winLabel.setFont(new Font("Arial",4,30));
-        winningPanel.add(winLabel);
-        winningPanel.setVisible(true);
-
-        frame.add(winningPanel);
-//        frame.getComponent(1).setVisible(true);
-    }
-
-    public static JFrame getFrame(){
+    public static JFrame getFrame() {
         return frame;
     }
-
 }
