@@ -4,6 +4,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 public class Node {
+    private static final int CONNECT_LENGTH = 4;
+    private static final int THREE_PIECE_SCORE = 10000;
+    private static final int TWO_PIECE_SCORE = 100;
+    private static final int FALLING_DIAGONAL_THREE_PIECE_SCORE = 100;
+    private static final int FALLING_DIAGONAL_TWO_PIECE_SCORE = 10;
+
     Node parent;
     ArrayList<Node> children = new ArrayList<>();
     int[][] state;
@@ -64,7 +70,7 @@ public class Node {
         if (winner != 0 || boardFull) {
             eval = winner * 20000 * (remainingDepth + 1) / 2;
         } else {
-            eval = evaluationFunction() * (remainingDepth + 1) / 2;
+            eval = evaluatePosition() * (remainingDepth + 1) / 2;
         }
     }
 
@@ -135,123 +141,63 @@ public class Node {
 
 
 
-    private int evaluationFunction(){
-        int total =0;
-        for(int i=0;i<7;i++){
-            for (int j=0;j<6;j++){
-                //check horizontal
-                if(i<4){
-                    boolean possible = true;
-                    int count =0;
-                    int standard = state[i][j];
-                    for(int k=i; k<i+4; k++){
-                        if(state[k][j]==standard){
-                            count++;
-                        }
-                        else {
-                            if (standard != 0) {
-                                if (state[k][j] == standard * -1) {
-                                    count = 0;
-                                    possible = false;
-                                    break;
-                                }
-                            }
-                            //interruption
-                        }
+    private int evaluatePosition() {
+        int totalScore = 0;
+        for (int column = 0; column < state.length; column++) {
+            for (int row = 0; row < state[column].length; row++) {
+                totalScore += scoreWindow(column, row, 1, 0); // Horizontal
+                totalScore += scoreWindow(column, row, 0, 1); // Vertical
+                totalScore += scoreWindow(column, row, 1, 1); // Rising diagonal
+                // Preserve the original orientation and lower weights for this diagonal.
+                totalScore += scoreWindow(column, row, -1, 1,
+                        FALLING_DIAGONAL_THREE_PIECE_SCORE,
+                        FALLING_DIAGONAL_TWO_PIECE_SCORE);
+            }
+        }
+        return totalScore;
+    }
 
-                    }
-                    if(possible){
-                        if(count ==3)
-                            total+= standard*10000;
-                        else if(count ==2)
-                            total+=standard*100;
-                        else
-                            total += standard*count;
-                    }
-                }
+    private int scoreWindow(int column, int row, int columnStep, int rowStep) {
+        return scoreWindow(column, row, columnStep, rowStep,
+                THREE_PIECE_SCORE, TWO_PIECE_SCORE);
+    }
 
-                //check vertical
-                if(j<3){
-                    boolean possible = true;
-                    int count =0;
-                    int standard = state[i][j];
-                    for(int k=j; k<j+4; k++){
-                        if(state[i][k]==standard){
-                            count++;
-                        }
-                        //interruption
-                        else if(state[i][k]==standard*-1){
-                            count = 0;
-                            possible = false;
-                            break;
-                        }
-                    }
-                    if(possible){
-                        if(count ==3)
-                            total+= standard*10000;
-                        else if(count ==2)
-                            total+=standard*100;
-                        else
-                            total += standard*count;
-                    }
-                }
+    private int scoreWindow(
+            int column, int row, int columnStep, int rowStep,
+            int threePieceScore, int twoPieceScore) {
+        int endColumn = column + (CONNECT_LENGTH - 1) * columnStep;
+        int endRow = row + (CONNECT_LENGTH - 1) * rowStep;
+        if (endColumn < 0 || endColumn >= state.length
+                || endRow < 0 || endRow >= state[0].length) {
+            return 0;
+        }
 
-                //check diagonal /
-                if(i<4 &&j<3){
-                    boolean possible = true;
-                    int count =0;
-                    int standard = state[i][j];
-                    for(int k=0; k<4; k++){
-                        if(state[i+k][j+k]==standard){
-                            count++;
-                        }
-                        //interruption
-                        else if(state[i+k][j+k]==standard*-1){
-                            count = 0;
-                            possible = false;
-                            break;
-                        }
-                    }
-                    if(possible){
-                        if(count ==3)
-                            total+= standard*10000;
-                        else if(count ==2)
-                            total+=standard*100;
-                        else
-                            total += standard*count;
-                    }
-                }
+        // The existing heuristic only scores windows whose starting cell is occupied.
+        int player = state[column][row];
+        if (player == 0) {
+            return 0;
+        }
 
-                //check diagonal \
-                if(i>2 &&j<3){
-                    boolean possible = true;
-                    int count =0;
-                    int standard = state[i][j];
-                    for(int k=0; k<4; k++){
-                        if(state[i-k][j+k]==standard){
-                            count++;
-                        }
-                        //interruption
-                        else if(state[i-k][j+k]==standard*-1){
-                            count = 0;
-                            possible = false;
-                            break;
-                        }
-                    }
-                    if(possible){
-                        if(count ==3)
-                            total+= standard*100;
-                        else if(count ==2)
-                            total+=standard*10;
-                        else
-                            total += standard*count;
-                    }
-                }
-
+        int matchingPieces = 0;
+        for (int offset = 0; offset < CONNECT_LENGTH; offset++) {
+            int nextColumn = column + offset * columnStep;
+            int nextRow = row + offset * rowStep;
+            int cell = state[nextColumn][nextRow];
+            if (cell == -player) {
+                return 0;
+            }
+            if (cell == player) {
+                matchingPieces++;
             }
         }
 
-        return total;
+        if (matchingPieces == 3) {
+            return player * threePieceScore;
+        }
+        if (matchingPieces == 2) {
+            return player * twoPieceScore;
+        }
+        return player * matchingPieces;
     }
 
     public int evaluationFunction2() {
