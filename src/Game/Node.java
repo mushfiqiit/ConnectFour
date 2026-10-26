@@ -12,108 +12,106 @@ public class Node {
     NodeType type;
     int alphaBeta;
     int tempParentAlphaBeta;
-    int level;
+    int remainingDepth;
 
-    public Node(int[][] inputState, NodeType nt, Node parent, int level) {
+    public Node(
+            int[][] inputState, NodeType nodeType,
+            Node parent, int remainingDepth) {
         this.state = inputState;
-        this.type = nt;
-        MiniMaxAI.nodeCount++;
+        this.type = nodeType;
         this.parent = parent;
-        this.level= level;
+        this.remainingDepth = remainingDepth;
+        MiniMaxAI.nodeCount++;
 
-        /*********************ab************************/
-        if(type.equals(NodeType.MAX))
-            alphaBeta = Integer.MIN_VALUE;
-        else alphaBeta = Integer.MAX_VALUE;
+        initializeSearchBounds();
 
-        if(parent!=null)
-            tempParentAlphaBeta = this.parent.alphaBeta;
-        else tempParentAlphaBeta = Integer.MAX_VALUE;
-        /***************************************************/
+        int winner = checkWinner();
+        boolean boardFull = isBoardFull();
+        terminalNode = winner != 0 || boardFull || remainingDepth == 0;
 
-        for(int i=0; i<7;i++){
-            for(int j=0; j<6; j++){
-                if(state[i][j]==0){
-                    terminalNode=false;
-                    break;
-                }
-            }
-            if(!terminalNode)
-                break;
+        if (terminalNode) {
+            evaluateTerminalPosition(winner, boardFull);
+            propagateTerminalEvaluation();
+        } else {
+            expandChildren();
+            eval = evaluateBasedOnChild();
+            tempParentAlphaBeta = eval;
+            setParent();
         }
-        if(terminalNode) {
-            eval = checkWinner()*20000*(level+1)/2;
-        }
-        else{
-            if(checkWinner()!=0){
-                terminalNode = true;
-                eval = checkWinner()*20000*(level+1)/2;
-            }
-            else if(level==0){
-                terminalNode = true;
-                eval = evaluationFunction()*(level+1)/2;
-//                eval = evaluationFunction2();
-//                eval = evaluationFunction3();
-            }
-            else {
-                for(int i=0; i<7; i++){
-                    boolean canBeFilled = false;
-                    for (int j=0;j<6;j++){
-                        if(state[i][j]==0) {
-                            canBeFilled = true;
-                            break;
-                        }
-                    }
-                    if(canBeFilled){
-                        int[][] temp = Game.getInstance().clone(state);
-                        int replace= type.equals(NodeType.MAX) ? 1 : -1;
-                        for (int j = 0; j < 6; j++) {
-                            if (temp[i][j] == 0) {
-                                temp[i][j] = replace;
-                                break;
-                            }
-                        }
-
-                        NodeType newType = type.equals(NodeType.MAX)? NodeType.MIN:NodeType.MAX;
-                        Node n = new Node(temp,newType,this, level-1);
-                        children.add(n);
-
-                        /**************ab****************/
-                        if(parent!=null)
-                            if(parent.parent!=null)
-                                if (!pushUpwards())
-                                    break;
-
-                        /***************end******************/
-                    }
-                }
-                eval= evaluateBasedOnChild();
-                /******************ab*****************/
-                tempParentAlphaBeta = eval;
-                setParent();
-                /*********************************/
-            }
-        }
-
-        /*******************ab*******************/
-        if(terminalNode){
-            alphaBeta = eval;
-            if(pushUpwards()){
-                setParent();
-            }
-        }
-        /***********************************/
     }
 
+    private void initializeSearchBounds() {
+        alphaBeta = type == NodeType.MAX
+                ? Integer.MIN_VALUE
+                : Integer.MAX_VALUE;
+        tempParentAlphaBeta = parent != null
+                ? parent.alphaBeta
+                : Integer.MAX_VALUE;
+    }
 
+    private boolean isBoardFull() {
+        for (int[] column : state) {
+            for (int cell : column) {
+                if (cell == 0) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 
+    private void evaluateTerminalPosition(int winner, boolean boardFull) {
+        if (winner != 0 || boardFull) {
+            eval = winner * 20000 * (remainingDepth + 1) / 2;
+        } else {
+            eval = evaluationFunction() * (remainingDepth + 1) / 2;
+        }
+    }
+
+    private void propagateTerminalEvaluation() {
+        alphaBeta = eval;
+        if (pushUpwards()) {
+            setParent();
+        }
+    }
+
+    private void expandChildren() {
+        int player = type == NodeType.MAX ? 1 : -1;
+        NodeType childType = type == NodeType.MAX ? NodeType.MIN : NodeType.MAX;
+
+        for (int column = 0; column < state.length; column++) {
+            int emptyRow = findFirstEmptyRow(column);
+            if (emptyRow == -1) {
+                continue;
+            }
+
+            int[][] childState = Game.getInstance().clone(state);
+            childState[column][emptyRow] = player;
+            // Constructing a child evaluates its subtree and updates search bounds.
+            Node child = new Node(childState, childType, this, remainingDepth - 1);
+            children.add(child);
+
+            if (parent != null && parent.parent != null && !pushUpwards()) {
+                break;
+            }
+        }
+    }
+
+    private int findFirstEmptyRow(int column) {
+        for (int row = 0; row < state[column].length; row++) {
+            if (state[column][row] == 0) {
+                return row;
+            }
+        }
+        return -1;
+    }
 
     private int checkWinner() {
         return BoardRules.checkWinner(state);
     }
 
     private int evaluateBasedOnChild(){
-        if(type.equals(NodeType.MAX))
+        if(type == NodeType.MAX)
             return max();
         else return min();
     }
@@ -320,7 +318,7 @@ public class Node {
     public String toString(){
         String ret="";
         String tabs = "";
-        for (int i=7-level;i>=0;i--) tabs+="\t";
+        for (int i=7-remainingDepth;i>=0;i--) tabs+="\t";
         ret+=tabs+"{\n";
         for (int[] a:state) {
             ret+=tabs+"    "+Arrays.toString(a)+"\n";
@@ -338,7 +336,7 @@ public class Node {
 
     /***************************ab******************************/
     private boolean pushUpwards(){
-        if(type.equals(NodeType.MAX)){
+        if(type == NodeType.MAX){
             if(alphaBeta<= tempParentAlphaBeta){
                 tempParentAlphaBeta = alphaBeta;
                 return true;
@@ -356,7 +354,7 @@ public class Node {
 
     private void setParent(){
         if(parent != null){
-            if(type.equals(NodeType.MAX)){
+            if(type == NodeType.MAX){
                 if(tempParentAlphaBeta<=parent.alphaBeta){
                     parent.alphaBeta = tempParentAlphaBeta;
                 }
