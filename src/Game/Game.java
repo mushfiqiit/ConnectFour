@@ -10,7 +10,6 @@ public class Game {
 
     private static final int COLUMN_COUNT = 7;
     private static final int ROW_COUNT = 6;
-    private static final int CONNECT_LENGTH = 4;
 
     // The board is indexed by column, then by row from the bottom.
     private final int[][] board = new int[COLUMN_COUNT][ROW_COUNT];
@@ -84,44 +83,8 @@ public class Game {
         }
     }
 
-    public int checkWinner() {
-        for (int column = 0; column < COLUMN_COUNT; column++) {
-            for (int row = 0; row < ROW_COUNT; row++) {
-                int player = board[column][row];
-                if (player == 0) {
-                    continue;
-                }
-
-                if (hasWinningLine(column, row, 1, 0)       // Horizontal
-                        || hasWinningLine(column, row, 0, 1)  // Vertical
-                        || hasWinningLine(column, row, 1, 1)  // Rising diagonal
-                        || hasWinningLine(column, row, 1, -1)) { // Falling diagonal
-                    return player;
-                }
-            }
-        }
-        return 0;
-    }
-
-    private boolean hasWinningLine(
-            int column, int row, int columnStep, int rowStep) {
-        int endColumn = column + (CONNECT_LENGTH - 1) * columnStep;
-        int endRow = row + (CONNECT_LENGTH - 1) * rowStep;
-
-        if (endColumn < 0 || endColumn >= COLUMN_COUNT
-                || endRow < 0 || endRow >= ROW_COUNT) {
-            return false;
-        }
-
-        int player = board[column][row];
-        for (int offset = 1; offset < CONNECT_LENGTH; offset++) {
-            int nextColumn = column + offset * columnStep;
-            int nextRow = row + offset * rowStep;
-            if (board[nextColumn][nextRow] != player) {
-                return false;
-            }
-        }
-        return true;
+    int checkWinner() {
+        return BoardRules.checkWinner(board);
     }
 
     public void updateBoard(int columnIndex){

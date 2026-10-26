@@ -108,47 +108,9 @@ public class Node {
 
 
 
-    public int checkWinner(){
-        for(int i=0; i<7;i++){
-            for(int j=0; j<6; j++){
-                if(j<3){                                    //check column
-                    if(state[i][j]==state[i][j+1] &&
-                            state[i][j]==state[i][j+2] &&
-                            state[i][j]==state[i][j+3] &&
-                            state[i][j]!= 0
-                    ) return state[i][j];
-                }
-
-                if(i<4){                                    //check row
-                    if(state[i][j]==state[i+1][j] &&
-                            state[i][j]==state[i+2][j] &&
-                            state[i][j]==state[i+3][j] &&
-                            state[i][j]!= 0
-                    ) return state[i][j];
-                }
-
-                if(i<4 && j<3){                             //check diagonal /
-                    if(state[i][j]==state[i+1][j+1] &&
-                            state[i][j]==state[i+2][j+2] &&
-                            state[i][j]==state[i+3][j+3] &&
-                            state[i][j]!= 0
-                    ) return state[i][j];
-                }
-
-                if(i>2 && j<3){                             //check diagonal \
-                    if(state[i][j]==state[i-1][j+1] &&
-                            state[i][j]==state[i-2][j+2] &&
-                            state[i][j]==state[i-3][j+3] &&
-                            state[i][j]!= 0
-                    ) return state[i][j];
-                }
-            }
-        }
-        return 0;
+    private int checkWinner() {
+        return BoardRules.checkWinner(state);
     }
-
-
-
 
     private int evaluateBasedOnChild(){
         if(type.equals(NodeType.MAX))
