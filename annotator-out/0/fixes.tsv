@@ -1,2 +1,0 @@
-kind	class	method	param	index	uri	reason	annotation	rootClass	rootMethod
-PARAMETER	Game.Node	Node(Array[],Game.NodeType,Game.Node,int)	parent	2	/Users/mushfiqurrahmanchowdhury/Documents/NullAwayAnnotator/ConnectFour/src/Game/Node.java	PASS_NULLABLE	nullable	Game.MiniMaxAI	play(Array[])

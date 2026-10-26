@@ -1,2 +1,0 @@
-message_type	message	enc_class	enc_member	offset	path	target_kind	target_class	target_method	target_param	target_index	target_path
-PASS_NULLABLE	passing @Nullable parameter 'null' where @NonNull is required	Game.MiniMaxAI	play(Array[])	196	/Users/mushfiqurrahmanchowdhury/Documents/NullAwayAnnotator/ConnectFour/src/Game/MiniMaxAI.java	PARAMETER	Game.Node	Node(Array[],Game.NodeType,Game.Node,int)	parent	2	/Users/mushfiqurrahmanchowdhury/Documents/NullAwayAnnotator/ConnectFour/src/Game/Node.java
